@@ -2,23 +2,43 @@ import tkinter as tk
 from tkinter import ttk
 import random
 import string
+import re
+from datetime import datetime, timedelta
 
-class GoodsTransportPage:
-    def __init__(self, root, switch_to_payment):
-        self.root = root
+class ScrollableFrame(ttk.Frame):
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+class GoodsTransportPage(ScrollableFrame):
+    def __init__(self, container, switch_to_payment):
+        super().__init__(container)
         self.switch_to_payment = switch_to_payment
-        self.frame = ttk.Frame(self.root, padding="20")
-        self.frame.pack(fill=tk.BOTH, expand=True)
-
         self.create_widgets()
 
     def create_widgets(self):
         # Title
-        self.title_label = ttk.Label(self.frame, text="Define Goods for Pickup and Transport", font=("Helvetica", 16, "bold"))
+        self.title_label = ttk.Label(self.scrollable_frame, text="Define Goods for Pickup and Transport", font=("Helvetica", 16, "bold"))
         self.title_label.pack(pady=10)
 
         # Goods Details
-        self.details_frame = ttk.Labelframe(self.frame, text="Goods Details", padding="10")
+        self.details_frame = ttk.Labelframe(self.scrollable_frame, text="Goods Details", padding="10")
         self.details_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         ttk.Label(self.details_frame, text="Dimensions (L x W x H in cm):").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
@@ -33,53 +53,26 @@ class GoodsTransportPage:
         self.size_entry = ttk.Entry(self.details_frame)
         self.size_entry.grid(row=2, column=1, padx=5, pady=5)
 
+        # Vehicle Type Dropdown
         ttk.Label(self.details_frame, text="Preferred Vehicle Type:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
-        self.vehicle_type_entry = ttk.Entry(self.details_frame)
-        self.vehicle_type_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.vehicle_type_var = tk.StringVar()
+        self.vehicle_type_dropdown = ttk.Combobox(self.details_frame, textvariable=self.vehicle_type_var)
+        self.vehicle_type_dropdown['values'] = ("Van", "Truck", "Motorbike", "Bicycle")
+        self.vehicle_type_dropdown.grid(row=3, column=1, padx=5, pady=5)
 
-        # Generate Tracking Number
-        self.generate_button = ttk.Button(self.frame, text="Generate Tracking Number", command=self.generate_tracking_number)
-        self.generate_button.pack(pady=10)
+        # Make Payment Button
+        self.payment_button = ttk.Button(self.scrollable_frame, text="Make Payment", command=self.switch_to_payment)
+        self.payment_button.pack(pady=10)
 
-        # Result
-        self.result_label = ttk.Label(self.frame, text="", font=("Helvetica", 14))
-        self.result_label.pack(pady=10)
-
-    def generate_tracking_number(self):
-        dimensions = self.dimensions_entry.get()
-        texture = self.texture_entry.get()
-        size = self.size_entry.get()
-        vehicle_type = self.vehicle_type_entry.get()
-
-        if not dimensions or not texture or not size or not vehicle_type:
-            self.result_label.config(text="Please fill in all fields!", foreground="red")
-            return
-
-        tracking_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-        
-        result_text = (f"Goods Details:\n"
-                       f"Dimensions: {dimensions}\n"
-                       f"Texture: {texture}\n"
-                       f"Size: {size}\n"
-                       f"Preferred Vehicle Type: {vehicle_type}\n\n"
-                       f"Tracking Number: {tracking_number}")
-
-        self.result_label.config(text=result_text, foreground="black")
-
-        # Switch to Payment Page
-        self.switch_to_payment()
-
-class PaymentPage:
-    def __init__(self, root):
-        self.root = root
-        self.frame = ttk.Frame(self.root, padding="20")
-        self.frame.pack(fill=tk.BOTH, expand=True)
-
+class PaymentPage(ScrollableFrame):
+    def __init__(self, container, switch_to_tracking):
+        super().__init__(container)
+        self.switch_to_tracking = switch_to_tracking
         self.create_widgets()
 
     def create_widgets(self):
-        # Create the main frame with a scrollbar
-        self.main_frame = ttk.Frame(self.frame, padding="20")
+        # Main Frame
+        self.main_frame = ttk.Frame(self.scrollable_frame, padding="20")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Title
@@ -106,14 +99,12 @@ class PaymentPage:
         self.amount_entry = ttk.Entry(self.payment_frame)
         self.amount_entry.grid(row=3, column=1, padx=5, pady=5)
 
-        # Payment Method
-        ttk.Label(self.payment_frame, text="Payment Method:").grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
-        self.payment_method = tk.StringVar()
-        self.payment_method.set("Mobile Money")  # default value
+        # Payment Method Buttons
+        self.card_button = ttk.Button(self.payment_frame, text="Pay with Card", command=self.select_card)
+        self.card_button.grid(row=4, column=0, padx=5, pady=5)
 
-        methods = ["Mobile Money", "Card"]
-        self.payment_method_menu = ttk.OptionMenu(self.payment_frame, self.payment_method, *methods)
-        self.payment_method_menu.grid(row=4, column=1, padx=5, pady=5)
+        self.mobile_money_button = ttk.Button(self.payment_frame, text="Pay with Mobile Money", command=self.select_mobile_money)
+        self.mobile_money_button.grid(row=4, column=1, padx=5, pady=5)
 
         # Payment Details (for card)
         self.card_frame = ttk.Labelframe(self.payment_frame, text="Card Details", padding="10")
@@ -142,8 +133,10 @@ class PaymentPage:
         self.mobile_money_number_entry.grid(row=0, column=1, padx=5, pady=5)
 
         ttk.Label(self.mobile_money_frame, text="Service Provider:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
-        self.mobile_money_provider_entry = ttk.Entry(self.mobile_money_frame)
-        self.mobile_money_provider_entry.grid(row=1, column=1, padx=5, pady=5)
+        self.service_provider_var = tk.StringVar()
+        self.service_provider_dropdown = ttk.Combobox(self.mobile_money_frame, textvariable=self.service_provider_var)
+        self.service_provider_dropdown['values'] = ("MTN", "TELECEL", "AT")
+        self.service_provider_dropdown.grid(row=1, column=1, padx=5, pady=5)
 
         self.submit_button = ttk.Button(self.payment_frame, text="Submit Payment", command=self.submit_payment)
         self.submit_button.grid(row=6, column=1, padx=5, pady=10, sticky=tk.E)
@@ -151,15 +144,13 @@ class PaymentPage:
         self.status_label = ttk.Label(self.payment_frame, text="")
         self.status_label.grid(row=7, column=0, columnspan=2, pady=10)
 
-        self.payment_method.trace("w", self.update_payment_method)
+    def select_card(self):
+        self.card_frame.grid()
+        self.mobile_money_frame.grid_remove()
 
-    def update_payment_method(self, *args):
-        if self.payment_method.get() == "Card":
-            self.card_frame.grid()
-            self.mobile_money_frame.grid_remove()
-        elif self.payment_method.get() == "Mobile Money":
-            self.mobile_money_frame.grid()
-            self.card_frame.grid_remove()
+    def select_mobile_money(self):
+        self.mobile_money_frame.grid()
+        self.card_frame.grid_remove()
 
     def validate_card_details(self, card_number, expiry_date, cvv):
         card_number_pattern = re.compile(r"^\d{16}$")
@@ -171,42 +162,99 @@ class PaymentPage:
                 cvv_pattern.match(cvv))
 
     def submit_payment(self):
-        payment_method = self.payment_method.get()
-        if payment_method == "Card":
-            card_number = self.card_number_entry.get()
-            expiry_date = self.expiry_date_entry.get()
-            cvv = self.cvv_entry.get()
+        # Simulate payment processing
+        self.status_label.config(text="Payment successful!", foreground="green")
+        
+        # Generate a tracking number and switch to tracking page
+        tracking_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        self.switch_to_tracking(tracking_number)
 
-            if not self.validate_card_details(card_number, expiry_date, cvv):
-                self.status_label.config(text="Invalid card details!", foreground="red")
-                return
+class TrackingPage(ScrollableFrame):
+    def __init__(self, container, tracking_number):
+        super().__init__(container)
+        self.tracking_number = tracking_number
+        self.create_widgets()
 
-            # Simulate card payment processing
-            self.status_label.config(text="Payment successful!", foreground="green")
-        elif payment_method == "Mobile Money":
-            mobile_money_number = self.mobile_money_number_entry.get()
-            service_provider = self.mobile_money_provider_entry.get()
+    def create_widgets(self):
+        # Title
+        self.title_label = ttk.Label(self.scrollable_frame, text="Tracking and Customs Information", font=("Helvetica", 16, "bold"))
+        self.title_label.pack(pady=10)
 
-            if not mobile_money_number or not service_provider:
-                self.status_label.config(text="Please fill in all mobile money details!", foreground="red")
-                return
+        # Tracking Details
+        self.tracking_frame = ttk.Labelframe(self.scrollable_frame, text="Track Your Goods", padding="10")
+        self.tracking_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-            # Simulate mobile money payment processing
-            self.status_label.config(text="Payment successful!", foreground="green")
+        ttk.Label(self.tracking_frame, text="Tracking Number:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.tracking_number_label = ttk.Label(self.tracking_frame, text=self.tracking_number)
+        self.tracking_number_label.grid(row=0, column=1, padx=5, pady=5)
 
-def switch_to_payment():
-    # Clear the current frame and switch to Payment Page
-    for widget in root.winfo_children():
-        widget.destroy()
-    PaymentPage(root)
+        ttk.Label(self.tracking_frame, text="Estimated Delivery Date:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        self.estimated_delivery_label = ttk.Label(self.tracking_frame, text=self.get_estimated_delivery_date())
+        self.estimated_delivery_label.grid(row=1, column=1, padx=5, pady=5)
 
-def main():
-    global root
-    root = tk.Tk()
-    root.geometry("800x600")
+        ttk.Label(self.tracking_frame, text="Customs Status:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        self.customs_status_label = ttk.Label(self.tracking_frame, text=self.get_customs_status())
+        self.customs_status_label.grid(row=2, column=1, padx=5, pady=5)
 
-    GoodsTransportPage(root, switch_to_payment)
-    root.mainloop()
+        # Track Button
+        self.track_button = ttk.Button(self.tracking_frame, text="Check Delivery Progress", command=self.check_delivery)
+        self.track_button.grid(row=3, column=1, padx=5, pady=10, sticky=tk.E)
 
+    def get_estimated_delivery_date(self):
+        # Simulate an estimated delivery date (e.g., 5 days from today)
+        pickup_date = datetime.now()
+        estimated_delivery_date = pickup_date + timedelta(days=5)
+        return estimated_delivery_date.strftime("%Y-%m-%d")
+
+    def get_customs_status(self):
+        # Simulate customs status
+        return "Cleared"
+
+    def check_delivery(self):
+        # Simulate tracking functionality
+        progress = "In transit"
+        self.estimated_delivery_label.config(text=f"Status: {progress}")
+
+class TransportApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Goods Transport Service")
+
+        # Create a container frame for all pages
+        self.container = ttk.Frame(root)
+        self.container.pack(fill=tk.BOTH, expand=True)
+
+        # Initialize the pages but do not show them yet
+        self.goods_transport_page = GoodsTransportPage(self.container, self.show_payment_page)
+        self.payment_page = PaymentPage(self.container, self.show_tracking_page)
+        self.tracking_page = None  # Tracking page is created dynamically
+
+        # Show the first page
+        self.show_goods_transport_page()
+
+    def show_goods_transport_page(self):
+        self.goods_transport_page.pack(fill=tk.BOTH, expand=True)
+        self.payment_page.pack_forget()
+        if self.tracking_page:
+            self.tracking_page.pack_forget()
+
+    def show_payment_page(self):
+        self.goods_transport_page.pack_forget()
+        self.payment_page.pack(fill=tk.BOTH, expand=True)
+        if self.tracking_page:
+            self.tracking_page.pack_forget()
+
+    def show_tracking_page(self, tracking_number):
+        if self.tracking_page is None:
+            self.tracking_page = TrackingPage(self.container, tracking_number)
+        else:
+            self.tracking_page.tracking_number = tracking_number
+        self.goods_transport_page.pack_forget()
+        self.payment_page.pack_forget()
+        self.tracking_page.pack(fill=tk.BOTH, expand=True)
+
+# Main Program
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = TransportApp(root)
+    root.mainloop()
