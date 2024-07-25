@@ -17,16 +17,30 @@ class FAQPage:
         self.create_widgets()
 
     def create_widgets(self):
-        self.frame = ttk.Frame(self.root, padding="20")
-        self.frame.pack(fill=tk.BOTH, expand=True)
+        container = ttk.Frame(self.root)
+        container.pack(fill=tk.BOTH, expand=True)
 
-        self.label_title = ttk.Label(self.frame, text="FAQs", font=("Helvetica", 16, "bold"))
+        canvas = tk.Canvas(container)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        self.label_title = ttk.Label(scrollable_frame, text="FAQs", font=("Helvetica", 16, "bold"))
         self.label_title.pack(pady=(0, 20))
 
         self.questions = list(self.faq_data.keys())
 
         for question in self.questions:
-            question_frame = ttk.Frame(self.frame, padding="10", relief=tk.SUNKEN)
+            question_frame = ttk.Frame(scrollable_frame, padding="10", relief=tk.SUNKEN)
             question_frame.pack(fill=tk.X, padx=20, pady=10)
 
             question_label = ttk.Label(question_frame, text=question, font=("Helvetica", 12, "bold"))
@@ -37,6 +51,9 @@ class FAQPage:
 
             # Bind click event to show/hide answer
             question_label.bind("<Button-1>", lambda event, label=answer_label: self.toggle_answer(label))
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
     def toggle_answer(self, label):
         current_state = label.cget("state")
