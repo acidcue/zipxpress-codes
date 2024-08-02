@@ -40,8 +40,8 @@ class SupportPage:
         self.contact_info_frame = ttk.Labelframe(self.scrollable_frame, text="Contact Information", padding="10")
         self.contact_info_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        ttk.Label(self.contact_info_frame, text="Email: acidcue4@gmail.com", font=("Helvetica", 12)).pack(anchor=tk.W, padx=5, pady=2)
-        ttk.Label(self.contact_info_frame, text="Phone: +123-456-7890", font=("Helvetica", 12)).pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Label(self.contact_info_frame, text="Email: zipxpress234@outlook.com", font=("Helvetica", 12)).pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Label(self.contact_info_frame, text="Phone: +233257889765", font=("Helvetica", 12)).pack(anchor=tk.W, padx=5, pady=2)
 
         # Contact Form
         self.contact_frame = ttk.Labelframe(self.scrollable_frame, text="Contact Us", padding="10")
