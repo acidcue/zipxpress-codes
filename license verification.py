@@ -55,8 +55,13 @@ license_entry.pack(pady=5)
 
 tk.Label(root, text="License Type:").pack(pady=5)
 license_type_var = tk.StringVar()
-license_type_menu = tk.OptionMenu(root, license_type_var, "Commercial", "Non-Commercial")
-license_type_menu.pack(pady=5)
+
+# Create RadioButtons for license type
+commercial_radio = tk.Radiobutton(root, text="Commercial", variable=license_type_var, value="Commercial")
+commercial_radio.pack(pady=5)
+
+non_commercial_radio = tk.Radiobutton(root, text="Non-Commercial", variable=license_type_var, value="Non-Commercial")
+non_commercial_radio.pack(pady=5)
 
 register_button = tk.Button(root, text="Register Driver", command=register_driver)
 register_button.pack(pady=10)
